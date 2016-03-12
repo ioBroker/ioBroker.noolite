@@ -1,0 +1,213 @@
+<html>
+
+<link rel="stylesheet" type="text/css" href="../../lib/css/themes/jquery-ui/redmond/jquery-ui.min.css"/>
+<link rel="stylesheet" type="text/css" href="../../lib/css/jqGrid/ui.jqgrid-4.5.4.css"/>
+<script type="text/javascript" src="../../lib/js/jquery-1.11.1.min.js"></script>
+<script type="text/javascript" src="../../socket.io/socket.io.js"></script>
+<script type="text/javascript" src="../../lib/js/jquery-ui-1.10.3.full.min.js"></script>
+<script type="text/javascript" src="../../lib/js/jqGrid/jquery.jqGrid-4.5.4.min.js"></script>
+<script type="text/javascript" src="../../lib/js/jqGrid/grid.locale-all.js"></script>
+
+<link rel="stylesheet" type="text/css" href="../../css/adapter.css"/>
+<script type="text/javascript" src="../../js/translate.js"></script>
+<script type="text/javascript" src="../../js/adapter-settings.js"></script>
+
+<style>
+    .no-space {
+        border: 0px !important;
+        margin: 0px;
+        padding: 0px;
+        border-spacing: 0px;
+        border-image-width: 0px;
+    }
+</style>
+
+<script type="text/javascript">
+    systemDictionary = {
+        "Noolite adapter settings": {"en": "Noolite adapter settings",  "de": "Noolite adapter settings",   "ru": "Noolite adapter settings"},
+        "PR1132 Gateway IP:":       {"en": "PR1132 Gateway IP:",        "de": "PR1132 Gateway IP:",         "ru": "PR1132 Gateway IP:"},
+        "Update interval:":         {"en": "Update interval:",          "de": "Update interval:",           "ru": "Update interval:"},
+        "ms":                       {"en": "ms",                        "de": "ms",                         "ru": "ms"},
+        "Ch":                       {"en": "Ch",                        "de": "Ch",                         "ru": "Ch"},
+        "Active":                   {"en": "Active",                    "de": "Active",                     "ru": "Active"},
+        "Name":                     {"en": "Name",                      "de": "Name",                       "ru": "Name"},
+        "Type":                     {"en": "Type",                      "de": "Type",                       "ru": "Type"},
+        "Connect":                  {"en": "Pairing",                   "de": "Paarbildung",                "ru": "При/от-вязка"},
+        "on/off":                   {"en": "on/off",                    "de": "An/Aus",                     "ru": "вкл./выкл."},
+        "dimmer":                   {"en": "dimmer",                    "de": "Dimmer",                     "ru": "Диммирование"},
+        "rgb":                      {"en": "RGB",                       "de": "RGB",                        "ru": "RGB контроллер"}
+    };
+    var onchange = null;
+    var channels = [];
+    var active   = false;
+
+    function showOneChannel(index, portSettings) {
+        portSettings = portSettings || {};
+        // name, room, role, pty(type), ecmd(Action), eth(net action), m(mode), d(default state), pwm(0-255), misc (threshold)
+        var text = '<tr class="tspace">';
+        // index
+        text += '<td class="tspace" style="text-align: right">' + (index + 1) + '</td>';
+
+        // enabled
+        text += '<td class="tspace" style="text-align: center;"><input type="checkbox" class="tvalue tenabled" data-type="enabled" data-channel="' + index + '" ' + (portSettings.enabled ? 'checked' : '') + '/></td>';
+
+        // name
+        text += '<td class="tspace"><input class="tvalue tname" type="text" data-type="name" data-channel="' + index + '" value="' + (portSettings.name || '') + '" style="width: 100%"/></td>';
+
+        // type
+        text += '<td class="tspace"><select class="tvalue" data-type="type" data-channel="' + index + '" style="width: 100%">';
+        text += '<option value="switch" ' + ((portSettings.type == 'switch') ? 'selected' : '') + '>' + _('on/off') + '</option>';
+        text += '<option value="dimmer" ' + ((portSettings.type == 'dimmer') ? 'selected' : '') + '>' + _('dimmer') + '</option>';
+        text += '<option value="rgb" '    + ((portSettings.type == 'rgb')    ? 'selected' : '') + '>' + _('rgb')    + '</option>';
+        '</td>';
+
+        // buttons
+        text += '<td class="tspace" style="text-align: center; display: inline-block;">' +
+                '<button style="display: inline-block;" disabled data-channel="' + index + '" class="btn-connect"></button>' +
+                '<button style="display: inline-block;" disabled data-channel="' + index + '" class="btn-disconnect"></button>' +
+                '</td>';
+
+        text += '</tr>';
+        return text;
+    }
+
+    function valueChanged() {
+        var attr  = $(this).data('type');
+        var index = $(this).data('channel');
+
+        if ($(this).attr('type') == 'checkbox') {
+            channels[index][attr] = $(this).prop('checked');
+        } else {
+            if (attr === 'name') {
+                if (!channels[index].enabled) $('.tenabled[data-channel="' + index + '"]').prop('checked', true).trigger('change');
+            }
+            channels[index][attr] = $(this).val();
+        }
+    }
+
+    function onPair() {
+        var index = $(this).data('channel');
+        sendTo(null, 'pair', {channel: index}, function (msg) {
+
+        });
+    }
+    function onUnpair() {
+        var index = $(this).data('channel');
+        sendTo(null, 'unpair', {channel: index}, function (msg) {
+
+        });
+    }
+    function showChannels() {
+        var text = '';
+        for (var i = 0; i < 32; i++) {
+            channels[i] = channels[i] || {name: '', enabled: false, type: 'on/off'};
+            text += showOneChannel(i, channels[i]);
+        }
+        $('#channels').html(text);
+
+        $('.tvalue').each(function () {
+            if ($(this).attr('type') == 'text') {
+                $(this).keyup(function () {
+                    $(this).trigger('change');
+                });
+            }
+            $(this).change(valueChanged);
+        });
+
+        $('.btn-connect').button({
+            icons: {primary: 'ui-icon-transferthick-e-w'},
+            text:  false
+        }).css({width: 22, height: 22}).click(onPair).attr('title', _('Pair device to channel'));
+
+        $('.btn-disconnect').button({
+            icons: {primary: 'ui-icon-cancel'},
+            text:  false
+        }).css({width: 22, height: 22}).click(onPair).attr('title', _('Pair device to channel'));
+        $('#channelsTable').show();
+    }
+
+    function load(settings, onChange) {
+        if (!settings) return;
+
+        $('.value').each(function () {
+            var key = $(this).attr('id');
+
+            if ($(this).attr('type') == 'checkbox') {
+                $(this).prop('checked', settings[key]).change(function() {
+                    if ($('#auth').prop('checked')) {
+                        $('#secure').prop('checked', true);
+                    }
+                    onChange();
+                });
+            } else {
+                if (settings[key] === undefined) settings[key] = '';
+
+                $(this).val(settings[key]).change(function() {
+                    onChange();
+                }).keyup(function() {
+                    onChange();
+                });
+            }
+        });
+        channels = settings.channels;
+
+        onchange = onChange;
+
+        // read if instance is active or enabled
+        socket.emit('getState', 'system.adapter.' + adapter + '.' + instance + '.alive', function (err, state) {
+            active = common.enabled || (state && state.val);
+            if (active) {
+                $('.btn-connect').button('enable');
+                $('.btn-disconnect').button('enable');
+            } else {
+                $('.btn-connect').attr('title', 'To enable pairing set valid IP and activate adapter');
+                $('.btn-disconnect').attr('title', 'To enable unpairing set valid IP and activate adapter');
+            }
+        });
+
+        showChannels();
+
+        onChange(false);
+    }
+
+    function save(callback) {
+        var obj = {};
+        $('.value').each(function () {
+            var $this = $(this);
+            if ($this.attr('type') == 'checkbox') {
+                obj[$this.attr('id')] = $this.prop('checked');
+            } else {
+                obj[$this.attr('id')] = $this.val();
+            }
+        });
+        // Get edited table
+        obj.channels = channels;
+
+        callback(obj);
+    }
+</script>
+
+<!-- you have to put your config page in a div with id adapter-container -->
+<div id="adapter-container">
+
+    <table><tr><td><img src="noolite.png"></td><td><h3 class="translate">Noolite adapter settings</h3></td></tr></table>
+
+    <table>
+        <tr><td class="translate" style="text-align: right">PR1132 Gateway IP:</td><td><input  class="value" id="ip"/></td><td></td></tr>
+        <tr><td class="translate" style="text-align: right">Update interval:</td><td><input  class="value" id="pollInterval"/></td><td class="translate">seconds</td></tr>
+    </table>
+    <table id="channelsTable" style="width: 100%; height: 100%; overflow-x: hidden; overflow-y: auto; display: none;">
+        <thead>
+            <tr style="background: grey; color: white; border: 0" class="no-space">
+                <th class="translate translateT" title="Channel number" width="2em">Ch</th>
+                <th class="translate" width="2em" >Active</th>
+                <th class="translate" width="*">Name</th>
+                <th class="translate" width="15em">Type</th>
+                <th class="translate" width="2em">Connect</th>
+            </tr>
+        </thead>
+        <tbody id="channels">
+        </tbody>
+    </table>
+</div>
+</html>

@@ -1,0 +1,38 @@
+{
+    "common": {
+        "name":                     "noolite",
+        "version":                  "0.0.1",
+        "title":                    "Noolite Adapter",
+        "desc":                     {
+            "en": "Lets control the Noolite devices",
+            "de": "Ermöglicht die steuerung von Noolite-Geräten",
+            "ru": "Позволяет управлять Noolite устройствами"
+        },
+        "authors": [
+            "bluefox <dogafox@gmail.com>"
+        ],
+        "license":                  "MIT",
+        "platform":                 "Javascript/Node.js",
+        "mode":                     "daemon",
+        "loglevel":                 "info",
+        "icon":                     "noolite.png",
+        "messagebox":               true,
+        "readme":                   "https://raw.githubusercontent.com/ioBroker/ioBroker.noolite/master/README.md",
+        "keywords":                 ["Noolite"],
+		"enabled":                  false,
+        "extIcon":                  "https://raw.githubusercontent.com/ioBroker/ioBroker.noolite/master/admin/noolite.png",
+        "type":                     "hardware",
+        "localLink":                "http://%native_ip%",
+        "config": {
+            "width":     620,
+            "height":    500,
+            "minWidth":  400,
+            "minHeight": 300
+        }
+    },
+    "native": {
+        "ip":                       "192.168.0.168",
+        "pollInterval":             30,
+        "channels":                 []
+    }
+}

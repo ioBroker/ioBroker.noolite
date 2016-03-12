@@ -95,11 +95,11 @@ function pollStatus() {
         } else {
             body = body.replace(/[\r\n|\r|\n]/g,'');
 
-            body = '<response><snst0>34.9</snst0><snsh0>56.9</snsh0><snt0>0</snt0>' +
+            /*body = '<response><snst0>34.9</snst0><snsh0>56.9</snsh0><snt0>0</snt0>' +
             '<snst1></snst1><snsh1></snsh1><snt1>1</snt1>' +
             '<snst2>35.9</snst2><snsh2></snsh2><snt2>3</snt2>' +
             '<snst3></snst3><snsh3></snsh3><snt3>1</snt3>' +
-            '</response>';
+            '</response>';*/
 
             var match = body.match(/<snt\d+>[+-.,0-9]+<\/snt\d+>/g);
             var result = [];

@@ -1,8 +1,11 @@
 ![Logo](admin/noolite.png)
-ioBroker MegaD-328 adapter
+ioBroker Noolite adapter
 =================
 
-Lets control the [MegaD-328](http://www.ab-log.ru/smart-house/ethernet/noolite-328) over ethernet.
+Lets control the Noolite devices from ioBroker.
+
+Actually only ethernet gateway PR1132 is supported.
+
 ## English 
 [по русски](#Русский)
 

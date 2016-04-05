@@ -27,7 +27,11 @@ adapter.on('stateChange', function (id, state) {
 
         adapter.log.info('try to control ' + id + ' with ' + state.val);
 
-        sendCommand(channels[id].native, state.val);
+        if (channels[id].native.type === 'rgb') {
+            sendCommand(channels[id].native, state.val);
+        } else {
+            sendCommand(channels[id].native, state.val);
+        }
     }
 });
 
@@ -190,9 +194,34 @@ function sendDimmer(channel, value) {
     });
 }
 
-function sendCommand(native, value) {
+function sendRgb(channel, r, g, b) {
+    r = parseInt(r, 10);
+    g = parseInt(g, 10);
+    b = parseInt(b, 10);
+
+    if (r < 0)   r = 0;
+    if (r > 255) r = 255;
+
+    if (g < 0)   g = 0;
+    if (g > 255) g = 255;
+
+    if (b < 0)   b = 0;
+    if (b > 255) b = 255;
+
+    var cmd = 'http://' + adapter.config.ip + '/api.htm?ch=' + channel + '&cmd=6&br=0&fmt=3&d0=' + r + '&d1=' + g + '&d2=' + b;
+    adapter.log.debug(cmd);
+    request(cmd, function (error, response, body) {
+        if (error || response.statusCode != 200) {
+            adapter.log.error('Cannot send "' + cmd + '": ' + error || response.statusCode);
+        }
+    });
+}
+
+function sendCommand(native, value, g, b) {
     if (native.type === 'dimmer') {
         sendDimmer(native.channel, value);
+    } else if (native.type === 'rgb') {
+        sendRgb(native.channel, value, g, b);
     } else {
         sendOnOff(native.channel, value);
     }
@@ -304,29 +333,125 @@ function createStates(states, cb) {
 }
 
 function getId(channel, name) {
-    return adapter.namespace + '.channels.' + (channel + 1) + (name ? '_' + name.replace(/[\s.]/g, '_') : '');
+    return adapter.namespace + '.' + (channel + 1) + '_' + (name ? name.replace(/[\s.]/g, '_') : 'channel');
 }
 
 function generateState(channel, config) {
     config = config || {name: '', type: 'on/off'};
     config.channel = channel;
-    if (config === 'dimmer') {
-        return {
-            _id: getId(channel, config.name),
+    var id = getId(channel, config.name);
+    var parts = id.split('.');
+    parts.pop();
+    if (config.type === 'dimmer') {
+        return [{
+            _id: parts.join('.'),
+            common: {
+                name:  config.name,
+                role: 'light.dimmer'
+            },
+            native: {},
+            type: 'channel'
+        },
+        {
+            _id: getId(channel, config.name) + '.LEVEL',
             common: {
                 name:  config.name,
                 type:  'number',
                 read:  true,
                 write: true,
                 def:   0,
-                role:  'dimmer.light'
+                role:  'level.dimmer'
             },
             native: config,
             type: 'state'
-        }
+        }];
+    } else if (config.type === 'rgb') {
+        return [{
+            _id: parts.join('.'),
+            common: {
+                name:  config.name,
+                role: 'light.color.rgb'
+            },
+            native: {},
+            type: 'channel'
+        },
+        {
+            _id: getId(channel, config.name) + '.RED',
+            common: {
+                name:  config.name + ' - red',
+                type:  'number',
+                read:  true,
+                write: true,
+                def:   0,
+                role:  'level.color.red'
+            },
+            native: config,
+            type: 'state'
+        },
+        {
+            _id: getId(channel, config.name) + '.GREEN',
+            common: {
+                name:  config.name + ' - green',
+                type:  'number',
+                read:  true,
+                write: true,
+                def:   0,
+                role:  'level.color.green'
+            },
+            native: config,
+            type: 'state'
+        },
+        {
+            _id: getId(channel, config.name) + '.BLUE',
+            common: {
+                name:  config.name + ' - blue',
+                type:  'number',
+                read:  true,
+                write: true,
+                def:   0,
+                role:  'level.color.blue'
+            },
+            native: config,
+            type: 'state'
+        },
+        {
+            _id: getId(channel, config.name) + '.RGB',
+            common: {
+                name:  config.name + ' - blue',
+                type:  'string',
+                read:  true,
+                write: true,
+                def:   '#000000',
+                role:  'level.color.rgb'
+            },
+            native: config,
+            type: 'state'
+        },
+        {
+            _id: getId(channel, config.name) + '.STATE',
+            common: {
+                name:  config.name + ' - on/off',
+                type:  'boolean',
+                read:  true,
+                write: true,
+                def:   false,
+                role:  'switch.light'
+            },
+            native: config,
+            type: 'state'
+        }];
     } else {
-        return {
-            _id: getId(channel, config.name),
+        return [{
+            _id: parts.join('.'),
+            common: {
+                name:  config.name,
+                role: 'light.switch'
+            },
+            native: {},
+            type: 'channel'
+        },
+        {
+            _id: getId(channel, config.name) + '.STATE',
             common: {
                 name:  config.name,
                 type:  'boolean',
@@ -337,7 +462,7 @@ function generateState(channel, config) {
             },
             native: config,
             type: 'state'
-        }
+        }];
     }
 }
 
@@ -427,10 +552,14 @@ function main() {
         for (var c = 0; c < adapter.config.channels.length; c++) {
             if (!adapter.config.channels[c] || !adapter.config.channels[c].enabled) continue;
             id = getId(c, adapter.config.channels[c].name);
+
             // if name changed or never exists
             if (!states[id] || states[id].native.type !== adapter.config.channels[c].type) {
-                states[id] = generateState(c, adapter.config.channels[c]);
-                toAdd.push(states[id]);
+                var _states = generateState(c, adapter.config.channels[c]);
+                for (var s = 0; s < _states.length; s++) {
+                    states[_states[s]._id] = _states[s];
+                    toAdd.push(states[_states[s]._id]);
+                }
             }
         }
 

@@ -1,6 +1,6 @@
 {
   "name": "iobroker.noolite",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "Lets control the noolite devices from ioBroker",
   "author": {
     "name": "bluefox",
@@ -16,7 +16,8 @@
     "url": "https://github.com/ioBroker/ioBroker.noolite"
   },
   "dependencies": {
-    "request": "^2.69.0"
+    "request": "^2.69.0",
+    "noolite": "^2.0.2"
   },
   "devDependencies": {
       "grunt": "^0.4.5",

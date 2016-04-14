@@ -8,11 +8,16 @@
 /*jslint node: true */
 "use strict";
 
-var request  = require('request');
-var utils    = require(__dirname + '/lib/utils'); // Get common adapter utils
-var channels = {};
-var adapter  = utils.adapter('noolite');
+var request   = require('request');
+var utils     = require(__dirname + '/lib/utils'); // Get common adapter utils
+var Noolite   = require('noolite');
+var channels  = {};
+var adapter   = utils.adapter('noolite');
 var interval;
+var connected = false;
+var rxUsb;
+var txUsb;
+var exec;
 
 adapter.on('stateChange', function (id, state) {
     if (id && state && !state.ack) {
@@ -28,9 +33,59 @@ adapter.on('stateChange', function (id, state) {
         adapter.log.info('try to control ' + id + ' with ' + state.val);
 
         if (channels[id].native.type === 'rgb') {
-            sendCommand(channels[id].native, state.val);
+            var parts = id.split('.');
+            var color = parts.pop();
+            var _id   = parts.join('.');
+
+            if (color === 'RED' || color === 'BLUE' || color === 'GREEN') {
+                channels[id].value = parseInt(state.val, 10);
+                channels[_id + '.RGB'].value = getColor(channels[_id + '.RED'].value, channels[_id + '.GREEN'].value, channels[_id + '.BLUE'].value);
+            } else if (color === 'RGB') {
+                var rgb = splitColor(state.val);
+                channels[_id + '.RED'].value   = rgb[0];
+                channels[_id + '.GREEN'].value = rgb[1];
+                channels[_id + '.BLUE'].value  = rgb[2];
+            } else if (color === 'STATE') {
+                if (state.val === 'true' || state.val === true || state.val === 1 || state.val === '1') {
+                    if (channels[_id + '.RGB'].oldValue && channels[_id + '.RGB'].oldValue !== '#000000') {
+                        channels[_id + '.RGB'].value = channels[_id + '.RGB'].oldValue;
+                    } else {
+                        channels[_id + '.RGB'].value = '#FFFFFF';
+                    }
+                    channels[_id + '.RGB'].oldValue = null;
+                    var rgb = splitColor(channels[_id + '.RGB'].value);
+                    channels[_id + '.RED'].value   = rgb[0];
+                    channels[_id + '.GREEN'].value = rgb[1];
+                    channels[_id + '.BLUE'].value  = rgb[2];
+                } else {
+                    // off
+                    if (channels[_id + '.RGB'].value !== '#000000') {
+                        channels[_id + '.RGB'].oldValue = channels[_id + '.RGB'].value;
+                    } else {
+                        channels[_id + '.RGB'].oldValue = null;
+                    }
+                    channels[_id + '.RGB'].value   = '#000000';
+                    channels[_id + '.RED'].value   = 0;
+                    channels[_id + '.GREEN'].value = 0;
+                    channels[_id + '.BLUE'].value  = 0;
+                }
+            }
+
+            sendCommand(id, channels[id].native, channels[_id + '.RED'].value, channels[_id + '.GREEN'].value, channels[_id + '.BLUE'].value, function (err, _id) {
+                if (err) {
+                    adapter.setForeignState(_id, {val: channels[_id].value, ack: true, q: 0x42}); // device is not connected
+                } else {
+                    adapter.setForeignState(_id, {val: channels[_id].value, ack: true, q: 0});
+                }
+            });
         } else {
-            sendCommand(channels[id].native, state.val);
+            sendCommand(id, channels[id].native, state.val, function (err, _id) {
+                if (err) {
+                    adapter.setForeignState(_id, {val: channels[_id].value, ack: true, q: 0x42}); // device is not connected
+                } else {
+                    adapter.setForeignState(_id, {val: channels[_id].value, ack: true, q: 0});
+                }
+            });
         }
     }
 });
@@ -44,27 +99,46 @@ adapter.on('message', function (obj) {
     if (obj && obj.command) {
         switch (obj.command) {
             case 'pair':
-                cmd = 'http://' + (obj.message.ip || adapter.config.ip) + '/api.htm?ch=' + obj.message.channel + '&cmd=15';
+                if (txUsb) {
+                    txUsb.send(obj.message.channel, 'UNBIND', function (error) {
+                        if (error) adapter.log.error('Cannot send "UNBIND": ' + error);
 
-                request(cmd, function (error, response, body) {
-                    if (error || response.statusCode != 200) {
-                        adapter.log.error('Cannot send "' + cmd + '": ' + error || response.statusCode);
-                    }
-                    if (obj.callback) adapter.sendTo(obj.from, obj.command, {error: error}, obj.callback);
-                });
+                        if (obj.callback) adapter.sendTo(obj.from, obj.command, {error: error}, obj.callback);
+                    })
+                } else if (obj.message.ip || adapter.config.ip) {
+                    cmd = 'http://' + (obj.message.ip || adapter.config.ip) + '/api.htm?ch=' + obj.message.channel + '&cmd=15';
 
-                processMessage(obj.message);
+                    request(cmd, function (error, response, body) {
+                        if (error || response.statusCode != 200) {
+                            adapter.log.error('Cannot send "' + cmd + '": ' + error || response.statusCode);
+                        }
+                        if (obj.callback) adapter.sendTo(obj.from, obj.command, {error: error}, obj.callback);
+                    });
+                } else {
+                    if (obj.callback) adapter.sendTo(obj.from, obj.command, {error: 'No device configured to transmit'}, obj.callback);
+                }
+
                 break;
 
             case 'unpair':
-                cmd = 'http://' + (obj.message.ip || adapter.config.ip) + '/api.htm?ch=' + obj.message.channel + '&cmd=9';
+                if (txUsb) {
+                    txUsb.send(obj.message.channel, 'BIND', function (error) {
+                        if (error) adapter.log.error('Cannot send "BIND": ' + error);
 
-                request(cmd, function (error, response, body) {
-                    if (error || response.statusCode != 200) {
-                        adapter.log.error('Cannot send "' + cmd + '": ' + error || response.statusCode);
-                    }
-                    if (obj.callback) adapter.sendTo(obj.from, obj.command, {error: error}, obj.callback);
-                });
+                        if (obj.callback) adapter.sendTo(obj.from, obj.command, {error: error}, obj.callback);
+                    });
+                } else if (obj.message.ip || adapter.config.ip) {
+                    cmd = 'http://' + (obj.message.ip || adapter.config.ip) + '/api.htm?ch=' + obj.message.channel + '&cmd=9';
+
+                    request(cmd, function (error, response, body) {
+                        if (error || response.statusCode != 200) {
+                            adapter.log.error('Cannot send "' + cmd + '": ' + error || response.statusCode);
+                        }
+                        if (obj.callback) adapter.sendTo(obj.from, obj.command, {error: error}, obj.callback);
+                    });
+                } else {
+                    if (obj.callback) adapter.sendTo(obj.from, obj.command, {error: 'No device configured to transmit'}, obj.callback);
+                }
                 break;
 
             default:
@@ -76,6 +150,15 @@ adapter.on('message', function (obj) {
 
 adapter.on('unload', function (obj) {
     if (interval) clearInterval(interval);
+    if (adapter && adapter.setState) adapter.setState('info.connection', false, true);
+    if (rxUsb) {
+        rxUsb.close();
+        rxUsb = null;
+    }
+    if (txUsb) {
+        txUsb.close();
+        rxUsb = null;
+    }
 });
 
 function writeValues(result) {
@@ -96,7 +179,16 @@ function pollStatus() {
     request('http://' + adapter.config.ip + '/sens.xml', function (error, response, body) {
         if (error || response.statusCode != 200) {
             adapter.log.error('Cannot read sensors: ' + error || response.statusCode);
+            if (connected) {
+                connected = false;
+                adapter.setState('info.connection', false, true);
+            }
         } else {
+            if (!connected) {
+                connected = true;
+                adapter.setState('info.connection', true, true);
+            }
+
             body = body.replace(/[\r\n|\r|\n]/g,'');
 
             /*body = '<response><snst0>34.9</snst0><snsh0>56.9</snsh0><snt0>0</snt0>' +
@@ -162,22 +254,52 @@ function pollStatus() {
     });
 }
 
-function sendOnOff(channel, value) {
-    var cmd = 'http://' + adapter.config.ip + '/api.htm?ch=' + channel + '&cmd=' + ((!value || value === 'false' || value === '0') ? 0 : 2);
-    adapter.log.debug(cmd);
-    request(cmd, function (error, response, body) {
-        if (error || response.statusCode != 200) {
-            adapter.log.error('Cannot send "' + cmd + '": ' + error || response.statusCode);
+function sendOnOff(id, channel, value, cb) {
+    if (exec) {
+        var cmd = adapter.config.exe + ' -api ' + ((!value || value === 'false' || value === '0') ? 'off' : 'on') + '_ch' + (channel + 1);
+
+        adapter.log.debug(cmd);
+        exec(cmd, function (error, stdout, stderr) {
+            if (error) adapter.log.error('Cannot execute ' + cmd + ':' + error);
+            if (typeof cb === 'function') cb(error, id);
+        });
+    } else
+    if (txUsb) {
+        try {
+            txUsb.send(channel, (!value || value === 'false' || value === '0') ? 'OFF' : 'ON', function (error) {
+                if (error) {
+                    adapter.log.error('Cannot switch ' + (!value || value === 'false' || value === '0') ? 'OFF' : 'ON' + ': ' + error);
+                    if (typeof cb === 'function') cb(error, id);
+                } else {
+                    if (typeof cb === 'function') cb(null, id);
+                }
+            });
+        } catch (error) {
+            if (typeof cb === 'function') cb(error, id);
         }
-    });
+    } else
+    if (adapter.config.ip) {
+        var cmd = 'http://' + adapter.config.ip + '/api.htm?ch=' + channel + '&cmd=' + ((!value || value === 'false' || value === '0') ? 0 : 2);
+        adapter.log.debug(cmd);
+        request(cmd, function (error, response, body) {
+            if (error || response.statusCode != 200) {
+                adapter.log.error('Cannot send "' + cmd + '": ' + error || response.statusCode);
+                if (typeof cb === 'function') cb(error, id);
+            } else {
+                if (typeof cb === 'function') cb(null, id);
+            }
+        });
+    } else {
+        adapter.log.error('No device configured for transmit');
+    }
 }
 
 function getSensorId(index) {
     return adapter.namespace + '.sensors.' + index;
 }
 
-function sendDimmer(channel, value) {
-    if (value === true || value === 'true')   value = 255;
+function sendDimmer(id, channel, value, cb) {
+    if (value === true  || value === 'true')  value = 255;
     if (value === false || value === 'false') value = 0;
 
     value = parseInt(value, 10);
@@ -185,16 +307,45 @@ function sendDimmer(channel, value) {
     if (value < 0)   value = 0;
     if (value > 255) value = 255;
 
-    var cmd = 'http://' + adapter.config.ip + '/api.htm?ch=' + channel + '&cmd=6&br=' + value;
-    adapter.log.debug(cmd);
-    request(cmd, function (error, response, body) {
-        if (error || response.statusCode != 200) {
-            adapter.log.error('Cannot send "' + cmd + '": ' + error || response.statusCode);
+    if (exec) {
+        var cmd = adapter.config.exe + ' -api set_ch' + (channel + 1) + ' -' + value;
+
+        adapter.log.debug(cmd);
+        exec(cmd, function (error, stdout, stderr) {
+            if (error) adapter.log.error('Cannot execute ' + cmd + ':' + error);
+            if (typeof cb === 'function') cb(error, id);
+        });
+    } else
+    if (txUsb) {
+        try {
+            txUsb.send(channel, 'SET', value, function (error) {
+                if (error) {
+                    adapter.log.error('Cannot switch ' + (!value || value === 'false' || value === '0') ? 'OFF' : 'ON' + ': ' + error);
+                    if (typeof cb === 'function') cb(error, id);
+                } else {
+                    if (typeof cb === 'function') cb(null, id);
+                }
+            });
+        } catch (error) {
+            if (typeof cb === 'function') cb(error, id);
         }
-    });
+    } else if (adapter.config.ip) {
+        var cmd = 'http://' + adapter.config.ip + '/api.htm?ch=' + channel + '&cmd=6&br=' + value;
+        adapter.log.debug(cmd);
+        request(cmd, function (error, response, body) {
+            if (error || response.statusCode != 200) {
+                adapter.log.error('Cannot send "' + cmd + '": ' + error || response.statusCode);
+                if (typeof cb === 'function') cb(error, id);
+            } else {
+                if (typeof cb === 'function') cb(null, id);
+            }
+        });
+    } else {
+        adapter.log.error('No device configured for transmit');
+    }
 }
 
-function sendRgb(channel, r, g, b) {
+function sendRgb(id, channel, r, g, b, cb) {
     r = parseInt(r, 10);
     g = parseInt(g, 10);
     b = parseInt(b, 10);
@@ -208,22 +359,53 @@ function sendRgb(channel, r, g, b) {
     if (b < 0)   b = 0;
     if (b > 255) b = 255;
 
-    var cmd = 'http://' + adapter.config.ip + '/api.htm?ch=' + channel + '&cmd=6&br=0&fmt=3&d0=' + r + '&d1=' + g + '&d2=' + b;
-    adapter.log.debug(cmd);
-    request(cmd, function (error, response, body) {
-        if (error || response.statusCode != 200) {
-            adapter.log.error('Cannot send "' + cmd + '": ' + error || response.statusCode);
+    if (exec) {
+        var cmd = adapter.config.exe + ' -api set_ch' + (channel + 1) + ' -' + value;
+
+        adapter.log.debug(cmd);
+        exec(cmd, function (error, stdout, stderr) {
+            if (error) adapter.log.error('Cannot execute ' + cmd + ':' + error);
+            if (typeof cb === 'function') cb(error, id);
+        });
+    } else if (txUsb) {
+        try {
+            txUsb.send(channel, 'SET', [r, g, b], function (error) {
+                if (error) {
+                    adapter.log.error('Cannot switch ' + (!value || value === 'false' || value === '0') ? 'OFF' : 'ON' + ': ' + error);
+                    if (typeof cb === 'function') cb(error, id);
+                } else {
+                    if (typeof cb === 'function') cb(null, id);
+                }
+            });
+        } catch (error) {
+            if (typeof cb === 'function') cb(error, id);
         }
-    });
+    } else if (adapter.config.ip) {
+        var cmd = 'http://' + adapter.config.ip + '/api.htm?ch=' + channel + '&cmd=6&br=0&fmt=3&d0=' + r + '&d1=' + g + '&d2=' + b + '&d3=0';
+        adapter.log.debug(cmd);
+
+        request(cmd, function (error, response, body) {
+            if (error || response.statusCode != 200) {
+                adapter.log.error('Cannot send "' + cmd + '": ' + error || response.statusCode);
+                if (typeof cb === 'function') cb(error, id);
+            } else {
+                if (typeof cb === 'function') cb(null, id);
+            }
+        });
+    } else {
+        adapter.log.error('No device configured for transmit');
+    }
 }
 
-function sendCommand(native, value, g, b) {
+function sendCommand(id, native, value, g, b, cb) {
+    if (typeof g === 'function') cb = g;
+
     if (native.type === 'dimmer') {
-        sendDimmer(native.channel, value);
+        sendDimmer(id, native.channel, value, cb);
     } else if (native.type === 'rgb') {
-        sendRgb(native.channel, value, g, b);
+        sendRgb(id, native.channel, value, g, b, cb);
     } else {
-        sendOnOff(native.channel, value);
+        sendOnOff(id, native.channel, value, cb);
     }
 }
 
@@ -244,12 +426,12 @@ function syncObjects(index, cb) {
         if (!obj || JSON.stringify(obj.native) !== JSON.stringify(adapter.config.devices[index])) {
             adapter.setObject(id, {
                 common: {
-                    name: adapter.config.devices[index].name,
-                    def: false,
-                    type: 'boolean', // нужный тип надо подставить
-                    read: 'true',
-                    write: 'true',   // нужный режим надо подставить
-                    role: 'state',
+                    name:   adapter.config.devices[index].name,
+                    def:    false,
+                    type:   'boolean', // нужный тип надо подставить
+                    read:   true,
+                    write:  true,   // нужный режим надо подставить
+                    role:   'state',
                     desc: obj ? obj.common.desc : 'Variable from mySensors'
                 },
                 type: 'state',
@@ -283,6 +465,72 @@ function syncObjects(index, cb) {
             }, 0);
         }
     });
+}
+
+function readValue(id, cb) {
+    adapter.getForeignState(id, function (err, state) {
+        if (!err && state) {
+            channels[id].value = parseInt(state.val, 10) || 0;
+        } else {
+            channels[id].value = 0;
+        }
+        cb();
+    });
+}
+// read states of RGB channels
+function readRGBStates(cb) {
+    var read = 0;
+    for (var id in channels) {
+        if (channels[id].native.type === 'rgb' && channels[id].value === undefined) {
+            read++;
+            readValue(id, function () {
+                if (!--read && cb) cb();
+            });
+        }
+    }
+    if (!read && cb) cb();
+}
+
+function getColor(r, g, b) {
+    r = r.toString(16).toUpperCase();
+    if (r.length < 2) r = '0' + r;
+
+    g = g.toString(16).toUpperCase();
+    if (g.length < 2) g = '0' + g;
+
+    b = b.toString(16).toUpperCase();
+    if (b.length < 2) b = '0' + b;
+
+    return '#' + r + g + b;
+}
+
+function splitColor(rgb) {
+    if (!rgb) rgb = '#000000';
+    rgb = rgb.toString().toUpperCase();
+    if (rgb[0] === '#') rgb = rgb.substring(1);
+    if (rgb.length < 6) rgb = rgb[0] + rgb[0] + rgb[1] + rgb[1] + rgb[2] + rgb[2];
+    var r = parseInt(rgb[0] + rgb[1], 16);
+    var g = parseInt(rgb[2] + rgb[3], 16);
+    var b = parseInt(rgb[4] + rgb[5], 16);
+
+    return [r, g, b];
+}
+
+function syncRGBStates(cb) {
+    for (var id in channels) {
+        if (channels[id].native.type === 'rgb' && id.match(/.RGB$/)) {
+            var parts = id.split('.');
+            parts.pop();
+            id = parts.join('.');
+
+            var rgb = getColor(channels[id + '.RED'].value, channels[id + '.GREEN'].value, channels[id + '.BLUE'].value);
+            channels[id + '.RGB'].value = rgb;
+            channels[id + '.STATE'].value = (rgb !== '#000000');
+            adapter.setForeignState(id + '.STATE', channels[id + '.STATE'].value, true);
+            adapter.setForeignState(id + '.RGB',   channels[id + '.RGB'].value,   true);
+        }
+    }
+    cb && cb();
 }
 
 // delete all messages from messagebox
@@ -541,8 +789,54 @@ function generateSensorState(index, values, result) {
 }
 
 function main() {
+    var platform = require('os').platform();
+
     adapter.config.pollInterval = parseInt(adapter.config.pollInterval, 0);
     if (adapter.config.pollInterval && adapter.config.pollInterval < 5) adapter.config.pollInterval = 5;
+
+    if (platform.match(/^win/)) {
+        var fs = require('fs');
+
+        if (adapter.config.exe && !fs.existsSync(adapter.config.exe)) {
+            var exe = adapter.config.exe.replace('Program Files', 'Program Files (x86)');
+            if (!fs.existsSync(exe)) {
+                exe = adapter.config.exe.replace('Program Files (x86)', 'Program Files');
+                if (!fs.existsSync(exe)) {
+                    if (!adapter.config.ip) adapter.error('Cannot find noolite.exe');
+                    adapter.config.exe = null;
+                } else {
+                    adapter.config.exe = exe;
+                }
+            } else {
+                adapter.config.exe = exe;
+            }
+        }
+
+        if (adapter.config.exe) {
+            exec = require('child_process').exec;
+            adapter.config.exe = '"' + adapter.config.exe + '"';
+        }
+    } else {
+        adapter.config.exe = null;
+        if (adapter.config.rxUsbName) {
+            // create driver instance
+            rxUsb = new Noolite({
+                device: adapter.config.rxUsbName
+            });
+            rxUsb.open(function (err) {
+                if (err) adapter.log.error('Cannot open receive USB: ' + err);
+            });
+        }
+        if (adapter.config.txUsbName) {
+            // create driver instance
+            txUsb = new Noolite({
+                device: adapter.config.txUsbName
+            });
+            txUsb.open(function (err) {
+                if (err) adapter.log.error('Cannot open receive USB: ' + err);
+            });
+        }
+    }
 
     adapter.getForeignObjects(adapter.namespace + '.*', 'state', function (err, states) {
         var toAdd    = [];
@@ -554,7 +848,7 @@ function main() {
             id = getId(c, adapter.config.channels[c].name);
 
             // if name changed or never exists
-            if (!states[id] || states[id].native.type !== adapter.config.channels[c].type) {
+            if (!states[id + '.STATE'] || states[id + '.STATE'].native.type !== adapter.config.channels[c].type) {
                 var _states = generateState(c, adapter.config.channels[c]);
                 for (var s = 0; s < _states.length; s++) {
                     states[_states[s]._id] = _states[s];
@@ -565,6 +859,9 @@ function main() {
 
         for (id in states) {
             var found = false;
+            var parts = id.split('.');
+            parts.pop();
+            id = parts.join('.');
             for (c = 0; c < adapter.config.channels.length; c++) {
                 if (!adapter.config.channels[c] || !adapter.config.channels[c].enabled) continue;
                 if (id === getId(c, adapter.config.channels[c].name)) {
@@ -590,13 +887,18 @@ function main() {
             adapter.subscribeStates('*');
         }
 
-
         channels = states;
         syncObjects(function () {
-            if (adapter.config.pollInterval && adapter.config.ip) {
-                pollStatus();
-                interval = setInterval(pollStatus, adapter.config.pollInterval * 1000);
-            }
+            readRGBStates(function () {
+                syncRGBStates(function () {
+                    if (adapter.config.pollInterval && adapter.config.ip) {
+                        pollStatus();
+                        interval = setInterval(pollStatus, adapter.config.pollInterval * 1000);
+                    } else {
+                        adapter.setState('info.connection', true, true);
+                    }
+                });
+            });
         });
     });
 

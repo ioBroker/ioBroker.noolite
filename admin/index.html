@@ -37,7 +37,10 @@
         "dimmer":                   {"en": "dimmer",                    "de": "Dimmer",                     "ru": "Диммирование"},
         "rgb":                      {"en": "RGB",                       "de": "RGB",                        "ru": "RGB контроллер"},
         "seconds":                  {"en": "seconds",                   "de": "seconds",                    "ru": "seconds"},
-        "Pair device to channel":   {"en": "Pair device to channel",    "de": "Pair device to channel",     "ru": "Pair device to channel"}
+        "Pair device to channel":   {"en": "Pair device to channel",    "de": "Pair device to channel",     "ru": "Pair device to channel"},
+        "TX USB Type:":             {"en": "TX USB Type:",              "de": "TX USB Typ:",                "ru": "TX USB тип:"},
+        "RX USB Type:":             {"en": "RX USB Type:",              "de": "RX USB Typ:",                "ru": "RX USB тип:"},
+        "Windows exe:":             {"en": "Windows EXE:",              "de": "Windows EXE:",               "ru": "Windows exe:"}
     };
     var onchange = null;
     var channels = [];
@@ -197,6 +200,19 @@
     <table>
         <tr><td class="translate" style="text-align: right">PR1132 Gateway IP:</td><td><input  class="value" id="ip"/></td><td></td></tr>
         <tr><td class="translate" style="text-align: right">Update interval:</td><td><input  class="value" id="pollInterval"/></td><td class="translate">seconds</td></tr>
+        <tr><td class="translate" style="text-align: right">TX USB Type:</td><td><select class="value" id="txUsbName">
+            <option value="" class="translate">none</option>
+            <option value="pc1132">PC1132</option>
+            <option value="pc118">PC118</option>
+            <option value="pc1116">PC1116</option>
+            <option value="pc1132">PC1132</option>
+        </select></td><td></td></tr>
+        <tr><td class="translate" style="text-align: right">RX USB Type:</td><td><select class="value" id="rxUsbName">
+            <option value="" class="translate">none</option>
+            <!--option value="rx1164">RX1164</option-->
+            <option value="rx2164">RX2164</option>
+        </select></td><td></td></tr>
+        <tr><td class="translate" style="text-align: right">Windows exe:</td><td><input class="value" id="exe"/></td><td></td></tr>
     </table>
     <table id="channelsTable" style="width: 100%; height: 100%; overflow-x: hidden; overflow-y: auto; display: none;">
         <thead>

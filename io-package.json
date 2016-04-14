@@ -1,7 +1,7 @@
 {
     "common": {
         "name":                     "noolite",
-        "version":                  "0.0.2",
+        "version":                  "0.1.0",
         "title":                    "Noolite Adapter",
         "desc":                     {
             "en": "Lets control the Noolite devices",
@@ -33,6 +33,32 @@
     "native": {
         "ip":                       "192.168.0.168",
         "pollInterval":             30,
-        "channels":                 []
-    }
+        "channels":                 [],
+        "txUsbName":                "",
+        "rxUsbName":                "",
+        "exe":                      "c:\\Program Files\\nooLite\\noolite.exe"
+    },
+    "instanceObjects": [
+        {
+            "_id":  "info",
+            "type": "channel",
+            "common": {
+                "name": "Information"
+            },
+            "native": {}
+        },
+        {
+            "_id":  "info.connection",
+            "type": "state",
+            "common": {
+                "role":  "indicator.connected",
+                "name":  "If connected to noolite gateway",
+                "type":  "boolean",
+                "read":  true,
+                "write": false,
+                "def":   false
+            },
+            "native": {}
+        }
+    ]
 }

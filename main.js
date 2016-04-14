@@ -99,6 +99,15 @@ adapter.on('message', function (obj) {
     if (obj && obj.command) {
         switch (obj.command) {
             case 'pair':
+                if (exec) {
+                    cmd = adapter.config.exe + ' -api -bind_ch' + (channel + 1);
+
+                    adapter.log.debug(cmd);
+                    exec(cmd, function (error, stdout, stderr) {
+                        if (error) adapter.log.error('Cannot execute ' + cmd + ':' + error);
+                        if (obj.callback) adapter.sendTo(obj.from, obj.command, {error: error}, obj.callback);
+                    });
+                } else
                 if (txUsb) {
                     txUsb.send(obj.message.channel, 'UNBIND', function (error) {
                         if (error) adapter.log.error('Cannot send "UNBIND": ' + error);
@@ -121,7 +130,15 @@ adapter.on('message', function (obj) {
                 break;
 
             case 'unpair':
-                if (txUsb) {
+                if (exec) {
+                    cmd = adapter.config.exe + ' -api -unbind_ch' + (channel + 1);
+
+                    adapter.log.debug(cmd);
+                    exec(cmd, function (error, stdout, stderr) {
+                        if (error) adapter.log.error('Cannot execute ' + cmd + ':' + error);
+                        if (obj.callback) adapter.sendTo(obj.from, obj.command, {error: error}, obj.callback);
+                    });
+                } else if (txUsb) {
                     txUsb.send(obj.message.channel, 'BIND', function (error) {
                         if (error) adapter.log.error('Cannot send "BIND": ' + error);
 
@@ -256,7 +273,7 @@ function pollStatus() {
 
 function sendOnOff(id, channel, value, cb) {
     if (exec) {
-        var cmd = adapter.config.exe + ' -api ' + ((!value || value === 'false' || value === '0') ? 'off' : 'on') + '_ch' + (channel + 1);
+        var cmd = adapter.config.exe + ' -api -' + ((!value || value === 'false' || value === '0') ? 'off' : 'on') + '_ch' + (channel + 1);
 
         adapter.log.debug(cmd);
         exec(cmd, function (error, stdout, stderr) {
@@ -308,7 +325,7 @@ function sendDimmer(id, channel, value, cb) {
     if (value > 255) value = 255;
 
     if (exec) {
-        var cmd = adapter.config.exe + ' -api set_ch' + (channel + 1) + ' -' + value;
+        var cmd = adapter.config.exe + ' -api -set_ch' + (channel + 1) + ' -' + value;
 
         adapter.log.debug(cmd);
         exec(cmd, function (error, stdout, stderr) {
@@ -360,7 +377,7 @@ function sendRgb(id, channel, r, g, b, cb) {
     if (b > 255) b = 255;
 
     if (exec) {
-        var cmd = adapter.config.exe + ' -api set_ch' + (channel + 1) + ' -' + value;
+        var cmd = adapter.config.exe + ' -api -set_ch' + (channel + 1) + ' -' + value;
 
         adapter.log.debug(cmd);
         exec(cmd, function (error, stdout, stderr) {

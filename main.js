@@ -40,11 +40,14 @@ adapter.on('stateChange', function (id, state) {
             if (color === 'RED' || color === 'BLUE' || color === 'GREEN') {
                 channels[id].value = parseInt(state.val, 10);
                 channels[_id + '.RGB'].value = getColor(channels[_id + '.RED'].value, channels[_id + '.GREEN'].value, channels[_id + '.BLUE'].value);
+                channels[_id + '.STATE'].value = '#000000' != channels[_id + '.RGB'].value;
+
             } else if (color === 'RGB') {
                 var rgb = splitColor(state.val);
                 channels[_id + '.RED'].value   = rgb[0];
                 channels[_id + '.GREEN'].value = rgb[1];
                 channels[_id + '.BLUE'].value  = rgb[2];
+                channels[_id + '.RGB'].value   = getColor(rgb[0], rgb[1], rgb[2]);
             } else if (color === 'STATE') {
                 if (state.val === 'true' || state.val === true || state.val === 1 || state.val === '1') {
                     if (channels[_id + '.RGB'].oldValue && channels[_id + '.RGB'].oldValue !== '#000000') {
@@ -57,6 +60,7 @@ adapter.on('stateChange', function (id, state) {
                     channels[_id + '.RED'].value   = rgb[0];
                     channels[_id + '.GREEN'].value = rgb[1];
                     channels[_id + '.BLUE'].value  = rgb[2];
+                    channels[_id + '.STATE'].value = true;
                 } else {
                     // off
                     if (channels[_id + '.RGB'].value !== '#000000') {
@@ -68,15 +72,16 @@ adapter.on('stateChange', function (id, state) {
                     channels[_id + '.RED'].value   = 0;
                     channels[_id + '.GREEN'].value = 0;
                     channels[_id + '.BLUE'].value  = 0;
+                    channels[_id + '.STATE'].value = false;
                 }
             }
 
-            sendCommand(id, channels[id].native, channels[_id + '.RED'].value, channels[_id + '.GREEN'].value, channels[_id + '.BLUE'].value, function (err, _id) {
-                if (err) {
-                    adapter.setForeignState(_id, {val: channels[_id].value, ack: true, q: 0x42}); // device is not connected
-                } else {
-                    adapter.setForeignState(_id, {val: channels[_id].value, ack: true, q: 0});
-                }
+            sendCommand(id, channels[id].native, channels[_id + '.RED'].value, channels[_id + '.GREEN'].value, channels[_id + '.BLUE'].value, function (err) {
+                adapter.setForeignState(_id + '.RGB',   {val: channels[_id + '.RGB'].value,   ack: true, q: err ? 0x42 : 0});
+                adapter.setForeignState(_id + '.RED',   {val: channels[_id + '.RED'].value,   ack: true, q: err ? 0x42 : 0});
+                adapter.setForeignState(_id + '.GREEN', {val: channels[_id + '.GREEN'].value, ack: true, q: err ? 0x42 : 0});
+                adapter.setForeignState(_id + '.BLUE',  {val: channels[_id + '.BLUE'].value,  ack: true, q: err ? 0x42 : 0});
+                adapter.setForeignState(_id + '.STATE', {val: channels[_id + '.STATE'].value, ack: true, q: err ? 0x42 : 0});
             });
         } else {
             sendCommand(id, channels[id].native, state.val, function (err, _id) {
@@ -377,7 +382,7 @@ function sendRgb(id, channel, r, g, b, cb) {
     if (b > 255) b = 255;
 
     if (exec) {
-        var cmd = adapter.config.exe + ' -api -set_ch' + (channel + 1) + ' -' + value;
+        var cmd = adapter.config.exe + ' -api -set_color_ch' + (channel + 1) + ' -' + r + ' -' + g + ' -' + b;
 
         adapter.log.debug(cmd);
         exec(cmd, function (error, stdout, stderr) {

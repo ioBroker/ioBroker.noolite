@@ -6,7 +6,7 @@
  */
 /* jshint -W097 */// jshint strict:false
 /*jslint node: true */
-"use strict";
+'use strict';
 
 var request   = require('request');
 var utils     = require(__dirname + '/lib/utils'); // Get common adapter utils

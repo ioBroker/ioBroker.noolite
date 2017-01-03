@@ -6,3 +6,5 @@ tmp
 .idea
 .git
 node-modules
+appveyor.yml
+.gitignore

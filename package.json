@@ -17,7 +17,8 @@
   },
   "dependencies": {
     "request": "^2.69.0",
-    "noolite": "^2.0.2"
+    "noolite": "^2.0.2",
+    "rimraf": "^2.4.3"
   },
   "devDependencies": {
       "grunt": "^0.4.5",

@@ -9,10 +9,9 @@ node_js:
   - '6'
   - '7'
 before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export CC=clang; export CXX=clang;fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export CC=clang; export CXX=clang; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export CXX=g++-4.8; fi
-  - npm i -g npm-check-updates
-  - npm-check-updates -u
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then npm install fsevents; fi
 before_script:
   - npm install winston@2.3.0
   - 'npm install https://github.com/ioBroker/ioBroker.js-controller/tarball/master --production'

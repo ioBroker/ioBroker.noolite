@@ -9,9 +9,11 @@ ioBroker Noolite adapter
 
 Lets control the Noolite devices from ioBroker.
 
+***The adapter requires at least nodejs 4.x***
+
 Actually only ethernet gateway PR1132 is supported.
 
-## English 
+## English
 [по русски](#Русский)
 
 ## Install
@@ -43,7 +45,7 @@ Actually only ethernet gateway PR1132 is supported.
 
 
 ### Порты
-         
+
 ## Changelog
 ### 0.2.0 (2016-04-30)
 * (bluefox) USB adapter under windows

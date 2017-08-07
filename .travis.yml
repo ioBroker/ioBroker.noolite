@@ -9,7 +9,7 @@ node_js:
 matrix:
   allow_failures:
     - os: osx
-      node_js: '7'
+      node_js: '8'
 before_install:
   - 'if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export CC=clang; export CXX=clang; fi'
   - 'if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export CXX=g++-4.8; fi'

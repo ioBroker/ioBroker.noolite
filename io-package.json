@@ -1,9 +1,9 @@
 {
     "common": {
-        "name":                     "noolite",
-        "version":                  "0.2.0",
-        "title":                    "Noolite Adapter",
-        "desc":                     {
+        "name": "noolite",
+        "version": "0.2.0",
+        "title": "Noolite Adapter",
+        "desc": {
             "en": "Lets control the Noolite devices",
             "de": "Ermöglicht die steuerung von Noolite-Geräten",
             "ru": "Позволяет управлять Noolite устройствами"
@@ -11,36 +11,38 @@
         "authors": [
             "bluefox <dogafox@gmail.com>"
         ],
-        "license":                  "MIT",
-        "platform":                 "Javascript/Node.js",
-        "mode":                     "daemon",
-        "loglevel":                 "info",
-        "icon":                     "noolite.png",
-        "messagebox":               true,
-        "readme":                   "https://raw.githubusercontent.com/ioBroker/ioBroker.noolite/master/README.md",
-        "keywords":                 ["Noolite"],
-		"enabled":                  false,
-        "extIcon":                  "https://raw.githubusercontent.com/ioBroker/ioBroker.noolite/master/admin/noolite.png",
-        "type":                     "hardware",
-        "localLink":                "http://%native_ip%",
+        "license": "MIT",
+        "platform": "Javascript/Node.js",
+        "mode": "daemon",
+        "loglevel": "info",
+        "icon": "noolite.png",
+        "messagebox": true,
+        "readme": "https://raw.githubusercontent.com/ioBroker/ioBroker.noolite/master/README.md",
+        "keywords": [
+            "Noolite"
+        ],
+        "enabled": false,
+        "extIcon": "https://raw.githubusercontent.com/ioBroker/ioBroker.noolite/master/admin/noolite.png",
+        "type": "iot-systems",
+        "localLink": "http://%native_ip%",
         "config": {
-            "width":     620,
-            "height":    500,
-            "minWidth":  400,
+            "width": 620,
+            "height": 500,
+            "minWidth": 400,
             "minHeight": 300
         }
     },
     "native": {
-        "ip":                       "192.168.0.168",
-        "pollInterval":             30,
-        "channels":                 [],
-        "txUsbName":                "",
-        "rxUsbName":                "",
-        "exe":                      "c:\\Program Files\\nooLite\\noolite.exe"
+        "ip": "192.168.0.168",
+        "pollInterval": 30,
+        "channels": [],
+        "txUsbName": "",
+        "rxUsbName": "",
+        "exe": "c:\\Program Files\\nooLite\\noolite.exe"
     },
     "instanceObjects": [
         {
-            "_id":  "info",
+            "_id": "info",
             "type": "channel",
             "common": {
                 "name": "Information"
@@ -48,15 +50,15 @@
             "native": {}
         },
         {
-            "_id":  "info.connection",
+            "_id": "info.connection",
             "type": "state",
             "common": {
-                "role":  "indicator.connected",
-                "name":  "If connected to noolite gateway",
-                "type":  "boolean",
-                "read":  true,
+                "role": "indicator.connected",
+                "name": "If connected to noolite gateway",
+                "type": "boolean",
+                "read": true,
                 "write": false,
-                "def":   false
+                "def": false
             },
             "native": {}
         }

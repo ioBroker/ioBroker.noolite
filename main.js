@@ -12,7 +12,7 @@ var request   = require('request');
 var utils     = require(__dirname + '/lib/utils'); // Get common adapter utils
 var Noolite   = require('noolite');
 var channels  = {};
-var adapter   = utils.adapter('noolite');
+var adapter   = utils.Adapter('noolite');
 var interval;
 var connected = false;
 var rxUsb;

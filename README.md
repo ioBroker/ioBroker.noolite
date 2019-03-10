@@ -2,7 +2,7 @@
 ioBroker Noolite adapter
 =================
 
-[![NPM version](http://img.shields.io/npm/v/iobroker.noolite.svg)](https://www.npmjs.com/package/iobroker.noolite)
+![Number of Installations](http://iobroker.live/badges/noolite-installed.svg) ![Number of Installations](http://iobroker.live/badges/noolite-stable.svg) [![NPM version](http://img.shields.io/npm/v/iobroker.noolite.svg)](https://www.npmjs.com/package/iobroker.noolite)
 [![Downloads](https://img.shields.io/npm/dm/iobroker.noolite.svg)](https://www.npmjs.com/package/iobroker.noolite)
 
 [![NPM](https://nodei.co/npm/iobroker.noolite.png?downloads=true)](https://nodei.co/npm/iobroker.noolite/)

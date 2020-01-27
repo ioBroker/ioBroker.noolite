@@ -242,7 +242,8 @@ function pollStatus() {
                 for (var m = 0; m < match.length; m++) {
                     var id  = match[m].match(/<snst(\d+)>/);
                     var num = match[m].match(/>([+-.,0-9]+)</);
-                    if (id && num && result[id[1]]) result[id[1]].TEMPERATURE = parseFloat(num[1]) || 0;
+                    if (id && num && result[id[1]]) result[id[1]].TEMPERATURE = num[1] || 0;
+                    // for float value use num[1], for int value use parseFloat(num[1])
                 }
             }
 

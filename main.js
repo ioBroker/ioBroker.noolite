@@ -1,15 +1,16 @@
 /**
  *      ioBroker Noolite Adapter
- *      03'2016 Bluefox
+ *      Copyright 03'2016-2020 Bluefox <dogafox@gmail.com>
  *      Lets control the Noolite (http://www.noo.com.by/sistema-noolite.html)
  *
  */
-/* jshint -W097 */// jshint strict:false
-/*jslint node: true */
+/* jshint -W097 */
+/* jshint strict: false */
+/* jslint node: true */
 'use strict';
 
 var request   = require('request');
-var utils = require('@iobroker/adapter-core'); // Get common adapter utils
+var utils     = require('@iobroker/adapter-core'); // Get common adapter utils
 var Noolite   = require('noolite');
 var channels  = {};
 var adapter   = utils.Adapter('noolite');
@@ -95,11 +96,9 @@ adapter.on('stateChange', function (id, state) {
     }
 });
 
-adapter.on('ready', function (obj) {
-    main();
-});
+adapter.on('ready', () => main());
 
-adapter.on('message', function (obj) {
+adapter.on('message', obj => {
     var cmd;
     if (obj && obj.command) {
         switch (obj.command) {
@@ -115,10 +114,10 @@ adapter.on('message', function (obj) {
                 } else
                 if (txUsb) {
                     txUsb.send(obj.message.channel, 'UNBIND', function (error) {
-                        if (error) adapter.log.error('Cannot send "UNBIND": ' + error);
+                        error && adapter.log.error('Cannot send "UNBIND": ' + error);
 
-                        if (obj.callback) adapter.sendTo(obj.from, obj.command, {error: error}, obj.callback);
-                    })
+                        obj.callback && adapter.sendTo(obj.from, obj.command, {error: error}, obj.callback);
+                    });
                 } else if (obj.message.ip || adapter.config.ip) {
                     cmd = 'http://' + (obj.message.ip || adapter.config.ip) + '/api.htm?ch=' + obj.message.channel + '&cmd=15';
 
@@ -126,10 +125,10 @@ adapter.on('message', function (obj) {
                         if (error || response.statusCode != 200) {
                             adapter.log.error('Cannot send "' + cmd + '": ' + error || response.statusCode);
                         }
-                        if (obj.callback) adapter.sendTo(obj.from, obj.command, {error: error}, obj.callback);
+                        obj.callback && adapter.sendTo(obj.from, obj.command, {error: error}, obj.callback);
                     });
                 } else {
-                    if (obj.callback) adapter.sendTo(obj.from, obj.command, {error: 'No device configured to transmit'}, obj.callback);
+                    obj.callback && adapter.sendTo(obj.from, obj.command, {error: 'No device configured to transmit'}, obj.callback);
                 }
 
                 break;
@@ -242,7 +241,9 @@ function pollStatus() {
                 for (var m = 0; m < match.length; m++) {
                     var id  = match[m].match(/<snst(\d+)>/);
                     var num = match[m].match(/>([+-.,0-9]+)</);
-                    if (id && num && result[id[1]]) result[id[1]].TEMPERATURE = parseFloat(num[1]) || 0;
+                    if (id && num && result[id[1]]) {
+                        result[id[1]].TEMPERATURE = parseFloat((num[1] || '0').replace(',', '.'));
+                    }
                 }
             }
 
@@ -252,7 +253,9 @@ function pollStatus() {
                 for (var m = 0; m < match.length; m++) {
                     var id  = match[m].match(/<snsh(\d+)>/);
                     var num = match[m].match(/>([+-.,0-9]+)</);
-                    if (id && num && result[id[1]]) result[id[1]].HUMIDITY = parseFloat(num[1]) || 0;
+                    if (id && num && result[id[1]]) {
+                        result[id[1]].HUMIDITY = parseFloat((num[1] || '0').replace(',', '.'));
+                    }
                 }
             }
 
@@ -266,9 +269,8 @@ function pollStatus() {
                 }
             }
             if (toAdd.length) {
-                createStates(toAdd, function () {
-                    writeValues(result);
-                });
+                createStates(toAdd, () =>
+                    writeValues(result));
             } else {
                 writeValues(result);
             }
@@ -282,8 +284,8 @@ function sendOnOff(id, channel, value, cb) {
 
         adapter.log.debug(cmd);
         exec(cmd, function (error, stdout, stderr) {
-            if (error) adapter.log.error('Cannot execute ' + cmd + ':' + error);
-            if (typeof cb === 'function') cb(error, id);
+            error && adapter.log.error('Cannot execute ' + cmd + ':' + error);
+            typeof cb === 'function' && cb(error, id);
         });
     } else
     if (txUsb) {
@@ -291,13 +293,13 @@ function sendOnOff(id, channel, value, cb) {
             txUsb.send(channel, (!value || value === 'false' || value === '0') ? 'OFF' : 'ON', function (error) {
                 if (error) {
                     adapter.log.error('Cannot switch ' + (!value || value === 'false' || value === '0') ? 'OFF' : 'ON' + ': ' + error);
-                    if (typeof cb === 'function') cb(error, id);
+                    typeof cb === 'function' && cb(error, id);
                 } else {
-                    if (typeof cb === 'function') cb(null, id);
+                    typeof cb === 'function' && cb(null, id);
                 }
             });
         } catch (error) {
-            if (typeof cb === 'function') cb(error, id);
+            typeof cb === 'function' && cb(error, id);
         }
     } else
     if (adapter.config.ip) {

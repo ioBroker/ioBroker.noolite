@@ -1,6 +1,6 @@
 {
   "name": "iobroker.noolite",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "description": "Lets control the noolite devices from ioBroker",
   "author": {
     "name": "bluefox",
@@ -16,19 +16,15 @@
     "url": "https://github.com/ioBroker/ioBroker.noolite"
   },
   "dependencies": {
-    "request": "^2.69.0",
+    "request": "^2.88.2",
     "noolite": "^2.0.2",
-    "rimraf": "^2.4.3",
+    "rimraf": "^3.0.2",
     "@iobroker/adapter-core": "^1.0.3"
   },
   "devDependencies": {
-    "grunt": "^1.0.1",
-    "grunt-replace": "^1.0.1",
-    "grunt-contrib-jshint": "^1.1.0",
-    "grunt-jscs": "^3.0.1",
-    "grunt-http": "^2.2.0",
-    "mocha": "^4.1.0",
-    "chai": "^4.1.2"
+    "gulp": "^4.0.2",
+    "mocha": "^7.0.0",
+    "chai": "^4.2.0"
   },
   "bugs": {
     "url": "https://github.com/ioBroker/ioBroker.noolite/issues"

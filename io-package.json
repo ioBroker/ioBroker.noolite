@@ -1,12 +1,33 @@
 {
     "common": {
         "name": "noolite",
-        "version": "0.2.0",
-        "title": "Noolite Adapter",
+        "version": "0.3.1",
+        "title": "Noolite",
         "desc": {
             "en": "Lets control the Noolite devices",
-            "de": "Ermöglicht die steuerung von Noolite-Geräten",
-            "ru": "Позволяет управлять Noolite устройствами"
+            "de": "Lasst uns die Noolite-Geräte steuern",
+            "ru": "Позволяет управлять устройствами Noolite",
+            "pt": "Permite controlar os dispositivos Noolite",
+            "nl": "Laten we de Noolite-apparaten besturen",
+            "fr": "Permet de contrôler les appareils Noolite",
+            "it": "Consente di controllare i dispositivi Noolite",
+            "es": "Permite controlar los dispositivos Noolite",
+            "pl": "Pozwala kontrolować urządzenia Noolite",
+            "zh-cn": "让我们控制Noolite设备"
+        },
+        "news": {
+            "0.3.1": {
+                "en": "Refactoring",
+                "de": "Refactoring",
+                "ru": "Рефакторинг",
+                "pt": "Reestruturação",
+                "nl": "refactoring",
+                "fr": "Refactoring",
+                "it": "refactoring",
+                "es": "Refactorización",
+                "pl": "Refaktoryzacja",
+                "zh-cn": "重构"
+            }
         },
         "authors": [
             "bluefox <dogafox@gmail.com>"
@@ -15,6 +36,8 @@
         "platform": "Javascript/Node.js",
         "mode": "daemon",
         "loglevel": "info",
+        "compact": true,
+        "materialize": true,
         "icon": "noolite.png",
         "messagebox": true,
         "readme": "https://raw.githubusercontent.com/ioBroker/ioBroker.noolite/master/README.md",
@@ -24,13 +47,7 @@
         "enabled": false,
         "extIcon": "https://raw.githubusercontent.com/ioBroker/ioBroker.noolite/master/admin/noolite.png",
         "type": "iot-systems",
-        "localLink": "http://%native_ip%",
-        "config": {
-            "width": 620,
-            "height": 500,
-            "minWidth": 400,
-            "minHeight": 300
-        }
+        "localLink": "http://%native_ip%"
     },
     "native": {
         "ip": "192.168.0.168",
